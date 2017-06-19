@@ -13,10 +13,10 @@ logger.addHandler(handler)
 
 # Client set-up
 reactBot = discord.Client(max_messages=10000)
-removePls = '❌' # Use this emoji to vote for deletion
-countStore = 'voteCount' # Filename to store min_vote; must be present on start up
-with open(countStore, 'r') as FILE: # Minimum amount of votes needed to initiate deletion
-    min_vote = int(FILE.read())
+configStore = 'dataStore' # Filename to store min_vote and emoji to watch; must be present on start up
+with open(configStore, 'r') as FILE: # Minimum amount of votes needed to initiate deletion
+    min_vote, removePls = FILE.read().split()
+    min_vote = int(min_vote)
 
 
 # Chore
@@ -35,7 +35,7 @@ async def on_reaction_add(reaction, user):
         return
 
     # Checks for relevant emojis, then checks if a deletion is needed
-    if (reaction.emoji == removePls) and reaction.count >= min_vote:
+    if (reaction.emoji == removePls) and (reaction.count >= min_vote):
         # Tries at least three times to delete message if HTTPException occurs
         for i in range(3):
             try:
@@ -54,29 +54,53 @@ async def on_reaction_add(reaction, user):
 @reactBot.event
 async def on_message(message):
     # Returns if the message is not a command or the author is not an admin
-    if (not message.content.startswith('%minvote')) or (not message.author.server_permissions.administrator):
+    if (not message.content.startswith('%')) or (not message.author.server_permissions.administrator):
         return
 
-    global min_vote
     msg = message.content.split()
-    if len(msg) == 1:
-        await reactBot.send_message(message.channel, 'Current minimum vote count is {}.'.format(min_vote))
-        return
-    elif len(msg) != 2:
-        await reactBot.send_message(message.channel, 'Invalid command format, try `%minvote [number]`.')
-        return
+    global min_vote, removePls
 
-    try:
-        min_vote = int(msg[1])
-        await reactBot.send_message(message.channel, 'Minimum vote has been changed to {}.'.format(min_vote))
+    # %minvote command
+    if message.content.startswith('%minvote'):
 
-        with open(countStore, 'w') as FILE:
-            FILE.write(str(min_vote))
-        logger.info('Minimum vote has been set to %s by %s.', min_vote, message.author.id)
-    except ValueError:
-        await reactBot.send_message(message.channel, 'Please enter a valid number!')
-    except:
-        await reactBot.send_message(message.channel, 'An error has occured and the minimum vote remains to be {}.'.format(min_vote))
+        if len(msg) == 1:
+            await reactBot.send_message(message.channel, 'Current minimum vote count is {}.'.format(min_vote))
+            return
+        elif len(msg) != 2:
+            await reactBot.send_message(message.channel, 'Invalid command format, try `%minvote [number]`.')
+            return
+
+        try:
+            min_vote = int(msg[1])
+            await reactBot.send_message(message.channel, 'Minimum vote has been changed to {}.'.format(min_vote))
+
+            with open(configStore, 'w') as FILE:
+                FILE.write(str(min_vote) + ' ' + removePls)
+            logger.info('Minimum vote has been set to %s by %s.', min_vote, message.author.id)
+        except ValueError:
+            await reactBot.send_message(message.channel, 'Please enter a valid number!')
+        except:
+            await reactBot.send_message(message.channel, 'An error has occured and the minimum vote remains to be {}.'.format(min_vote))
+
+    # %emoji command
+    if message.content.startswith('%emoji'):
+
+        if len(msg) == 1:
+            await reactBot.send_message(message.channel, 'Currently monitoring {}.'.format(removePls))
+            return
+        elif len(msg) != 2:
+            await reactBot.send_message(message.channel, 'Invalid command format, try `%emoji <emoji>`.')
+            return
+
+        try:
+            removePls = msg[1]
+            await reactBot.send_message(message.channel, 'Now monitoring {}.'.format(removePls))
+
+            with open(configStore, 'w') as FILE:
+                FILE.write(str(min_vote) + ' ' + removePls)
+            logger.info('Monitoring %s per request of %s..', removePls, message.author.id)
+        except:
+            await reactBot.send_message(message.channel, 'An error has occured and the emoji monitored remains to be {}.'.format(removePls))
 
 # Run the bot
 reactBot.run(os.environ['DISCORD_TOKEN'])
