@@ -98,7 +98,7 @@ async def on_message(message):
 
             with open(configStore, 'w') as FILE:
                 FILE.write(str(min_vote) + ' ' + removePls)
-            logger.info('Monitoring %s per request of %s..', removePls, message.author.id)
+            logger.info('Monitoring %s per request of %s.', removePls, message.author.id)
         except:
             await reactBot.send_message(message.channel, 'An error has occured and the emoji monitored remains to be {}.'.format(removePls))
 
